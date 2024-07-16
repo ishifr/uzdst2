@@ -4,7 +4,10 @@ import 'package:ffi/ffi.dart';
 
 class Gost341194CryptoProParamSet {
   // Private constructor
-  Gost341194CryptoProParamSet._internal();
+  Gost341194CryptoProParamSet._internal() {
+    initialize();
+  }
+  static Gost341194CryptoProParamSet get instance => _instance;
 
   // The static instance of the Singleton
   static final Gost341194CryptoProParamSet _instance =
