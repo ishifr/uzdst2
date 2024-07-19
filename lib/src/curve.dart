@@ -24,6 +24,7 @@ class Curve {
         '483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8',
         radix: 16),
   );
+ 
   static final algo2Test = Curve(
     BigInt.parse(
         '8000000000000000000000000000000000000000000000000000000000000431',
@@ -40,6 +41,7 @@ class Curve {
         '08E2A8A0E65147D4BD6316030E16D19C85C97F0A9CA267122B96ABBCEA7E8FC8',
         radix: 16),
   );
+  
   /// 1.2.860.3.15.1.1.2.1.1 
   static final cryptoProAParamSet = Curve(
     BigInt.parse(
@@ -57,6 +59,7 @@ class Curve {
         '8d91e471e0989cda27df505a453f2b7635294f2ddf23e3b122acc99c9e9f1e14',
         radix: 16),
   );
+  
   /// 1.2.860.3.15.1.1.2.1.2
   static final cryptoProCParamSet = Curve(
     BigInt.parse(
