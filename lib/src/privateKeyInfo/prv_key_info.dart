@@ -13,11 +13,14 @@ getKeyInfoFromFile(String path) async {
 
 void main(List<String> args) async {
   final fileInfo = await getKeyInfoFromFile('/Users/ishifr/Downloads/test-root-uzdst2.prk');
-  PrivateKeyInfo.fromASN1(fileInfo);
+  var a = PrivateKeyInfo.fromASN1(fileInfo);
+  var ecDomainParameters = ECDomainParameters('GostR3410-2001-CryptoPro-A');
+  var q = ecDomainParameters.curve.decodePoint(a.publicKey!.codeUnits);
+  print(q);
 }
 
 class PrivateKeyInfo {
-  String? publicKey;
+  var publicKey;
   String? privateKey;
   PrivateKeyInfo.fromASN1(Uint8List bytes) {
     var parser = ASN1Parser(bytes);
@@ -31,12 +34,11 @@ class PrivateKeyInfo {
       if (seq.elements == null || (seq.elements?.length ?? 0) < 2) {
         throw ArgumentError('Something wrong with inner sequence');
       }
-      print(seq.elements?.length);
       if (seq.elements?[1].tag == ASN1Tags.OCTET_STRING) {
         var temp = seq.elements?[1];
 
         privateKey = hex.encode(temp?.valueBytes ?? []);
-        print(privateKey);
+        print("privateKey: $privateKey");
       }
       if (seq.elements?[2] != null &&
           seq.elements![2].tag! >= 0xA0 &&
@@ -52,7 +54,8 @@ class PrivateKeyInfo {
         var csc = ASN1Parser(obj.valueBytes).nextObject();
         if (csc.tag == ASN1Tags.BIT_STRING) {
           var i = csc as ASN1BitString;
-          print(hex.encode(Uint8List.fromList(i.stringValues!)));
+          publicKey = hex.encode(Uint8List.fromList(i.stringValues!));
+          print("Publickey: ${hex.encode(Uint8List.fromList(i.stringValues!))}");
         }
       }
     } else {
@@ -60,3 +63,5 @@ class PrivateKeyInfo {
     }
   }
 }
+// 0440a7714d2bea23f82cf6fe1e8a92d0f952493230cc5bc6412d1c8f49fb7b7f393b9c7260773ec6ecc7674799561566eb62daa7d99d674f0d0f68991ade7b4d664b
+// b6bd2faeb862252c6a7681c88fb7fe4c7dad39220ff3a68d3dd8b63945ed5c09
