@@ -1,6 +1,20 @@
 import 'dart:ffi' as ffi;
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
+
+// Define the C function signature
+// ignore: camel_case_types
+typedef hash_gost94_func = ffi.Pointer<Utf8> Function(
+    ffi.Pointer<ffi.Uint8> data, ffi.IntPtr length);
+
+// Define the C function signatures
+typedef HashGost94Native = ffi.Pointer<Utf8> Function(
+    ffi.Pointer<ffi.Uint8> data, ffi.IntPtr length);
+typedef HashGost94Dart = ffi.Pointer<Utf8> Function(
+    ffi.Pointer<ffi.Uint8> data, int length);
+typedef FreeRustStringNative = ffi.Void Function(ffi.Pointer<Utf8>);
+typedef FreeRustStringDart = void Function(ffi.Pointer<Utf8>);
 
 class Gost341194CryptoProParamSet {
   // Private constructor
@@ -24,7 +38,9 @@ class Gost341194CryptoProParamSet {
   // Function pointers
   late final ffi.Pointer<Utf8> Function(ffi.Pointer<Utf8>) _hashString;
   late final ffi.Pointer<Utf8> Function(ffi.Pointer<Utf8>) _hashFile;
+  late final HashGost94Dart _hashByteArray;
   late final void Function(ffi.Pointer<Utf8>) _freeRustString;
+  late final FreeRustStringDart freeRustByteArray;
 
   // Initialization of the FFI functions
   void initialize() {
@@ -41,6 +57,13 @@ class Gost341194CryptoProParamSet {
     _hashString = _dylib.lookupFunction<
         ffi.Pointer<Utf8> Function(ffi.Pointer<Utf8>),
         ffi.Pointer<Utf8> Function(ffi.Pointer<Utf8>)>("hash_gost94");
+
+    // Look up the functions
+    _hashByteArray = _dylib.lookupFunction<HashGost94Native, HashGost94Dart>(
+        'hash_gost94ByteArray');
+    freeRustByteArray =
+        _dylib.lookupFunction<FreeRustStringNative, FreeRustStringDart>(
+            'free_rust_string');
 
     // Look up the functions
     _hashFile = _dylib.lookupFunction<
@@ -71,7 +94,39 @@ class Gost341194CryptoProParamSet {
 
     // Free the string allocated by Rust
     _freeRustString(resultPtr);
+    // _freeRustString(resultPtr);
 
     return result;
   }
+
+  String hashByteArray(Uint8List data) {
+    // Allocate memory for the Uint8List
+    final ffi.Pointer<ffi.Uint8> dataPtr =
+        malloc.allocate<ffi.Uint8>(data.length);
+    ffi.Pointer<ffi.Uint8> dataStart = dataPtr.cast<ffi.Uint8>();
+    // Copy data to the allocated memory
+    for (int i = 0; i < data.length; i++) {
+      dataStart[i] = data[i];
+    }
+    // Call the Rust function
+    final ffi.Pointer<Utf8> resultPtr = _hashByteArray(dataStart, data.length);
+
+    // Convert the result to a Dart string
+    final String result = resultPtr.toDartString();
+
+    // Free the allocated memory
+    malloc.free(dataPtr);
+    freeRustByteArray(resultPtr);
+
+    return result;
+  }
+}
+
+void main(List<String> args) {
+  var rustLib = Gost341194CryptoProParamSet();
+  print(rustLib.hashString(
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'));
+  print(rustLib.hashByteArray(Uint8List.fromList(
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+          .codeUnits)));
 }

@@ -2,6 +2,7 @@ use std::ffi::{CStr, CString};
 use std::fs::File;
 use std::io::{self, BufReader, Read};
 use std::os::raw::c_char;
+use std::slice;
 
 use gost94::Digest;
 
@@ -17,6 +18,24 @@ pub extern "C" fn hash_gost94(input: *const c_char) -> *mut c_char {
     let r_str = c_str.to_str().unwrap();
     let mut hasher = gost94::Gost94CryptoPro::new();
     hasher.update(r_str.as_bytes());
+    let result = hasher.finalize();
+    
+    let hex_result = result.iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect::<String>();
+
+    CString::new(hex_result).unwrap().into_raw()
+}
+
+#[no_mangle]
+pub extern "C" fn hash_gost94ByteArray(data: *const u8, length: usize) -> *mut c_char {
+    let data_slice = unsafe {
+        assert!(!data.is_null());
+        slice::from_raw_parts(data, length)
+    };
+
+    let mut hasher = gost94::Gost94CryptoPro::new();
+    hasher.update(data_slice);
     let result = hasher.finalize();
     
     let hex_result = result.iter()
@@ -75,3 +94,5 @@ pub extern "C" fn free_rust_string(s: *mut c_char) {
         let _ = CString::from_raw(s);
     };
 }
+
+// cargo build --release

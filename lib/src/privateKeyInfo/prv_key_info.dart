@@ -3,7 +3,10 @@ import 'dart:typed_data';
 
 import 'package:convert/convert.dart';
 import 'package:pointycastle/asn1.dart';
-import 'package:pointycastle/export.dart';
+
+import 'package:uzdst2/src/curve.dart';
+import 'package:uzdst2/src/ec_point.dart';
+import 'package:uzdst2/src/util/reverse_bytes.dart';
 
 getKeyInfoFromFile(String path) async {
   File file = File(path);
@@ -12,16 +15,16 @@ getKeyInfoFromFile(String path) async {
 }
 
 void main(List<String> args) async {
-  final fileInfo = await getKeyInfoFromFile('/Users/ishifr/Downloads/test-root-uzdst2.prk');
+  final fileInfo =
+      await getKeyInfoFromFile('/Users/ishifr/Downloads/test-root-uzdst2.prk');
   var a = PrivateKeyInfo.fromASN1(fileInfo);
-  var ecDomainParameters = ECDomainParameters('GostR3410-2001-CryptoPro-A');
-  var q = ecDomainParameters.curve.decodePoint(a.publicKey!.codeUnits);
-  print(q);
 }
 
 class PrivateKeyInfo {
-  var publicKey;
+  ECPoint? publicKey;
+  ECPoint? reversedPublicKey;
   String? privateKey;
+  late Curve curve;
   PrivateKeyInfo.fromASN1(Uint8List bytes) {
     var parser = ASN1Parser(bytes);
     var seq = parser.nextObject() as ASN1Sequence;
@@ -36,32 +39,36 @@ class PrivateKeyInfo {
       }
       if (seq.elements?[1].tag == ASN1Tags.OCTET_STRING) {
         var temp = seq.elements?[1];
-
         privateKey = hex.encode(temp?.valueBytes ?? []);
-        print("privateKey: $privateKey");
       }
       if (seq.elements?[2] != null &&
           seq.elements![2].tag! >= 0xA0 &&
           seq.elements![2].tag! <= 0xBF) {
         var csc = ASN1Parser(seq.elements![2].valueBytes).nextObject();
         ASN1ObjectIdentifier ecOID = csc as ASN1ObjectIdentifier;
-        print(ecOID.readableName);
-        ECDomainParameters('GostR3410-2001-CryptoPro-A');
-        print(ecOID.objectIdentifierAsString);
-      }
-      var obj = seq.elements?[3];
-      if (obj != null && obj.tag! >= 0xA0 && obj.tag! <= 0xBF) {
-        var csc = ASN1Parser(obj.valueBytes).nextObject();
-        if (csc.tag == ASN1Tags.BIT_STRING) {
-          var i = csc as ASN1BitString;
-          publicKey = hex.encode(Uint8List.fromList(i.stringValues!));
-          print("Publickey: ${hex.encode(Uint8List.fromList(i.stringValues!))}");
+        if (ecOID.readableName ==
+            'UZDST 1092:2009 II signature parameters, UNICON.UZ paramset A') {
+          curve = Curve.cryptoProAParamSet;
+        } else {
+          curve = Curve.cryptoProCParamSet;
         }
+        publicKey = ECPoint(curve, curve.gX, curve.gY) *
+            BigInt.parse(privateKey!, radix: 16);
+        print("x: ${publicKey!.x.toRadixString(16)}");
+        print("y: ${publicKey!.y.toRadixString(16)}");
+        reversedPublicKey = ECPoint(
+            curve,
+            BigInt.parse(reverseBytes(publicKey!.x.toRadixString(16)), radix: 16),
+            BigInt.parse(reverseBytes(publicKey!.y.toRadixString(16)), radix: 16));
+
+        print("r x: ${reversedPublicKey!.x.toRadixString(16)}");
+        print("r y: ${reversedPublicKey!.y.toRadixString(16)}");
       }
     } else {
       throw ArgumentError('Something wrong with sequence');
     }
   }
 }
-// 0440a7714d2bea23f82cf6fe1e8a92d0f952493230cc5bc6412d1c8f49fb7b7f393b9c7260773ec6ecc7674799561566eb62daa7d99d674f0d0f68991ade7b4d664b
-// b6bd2faeb862252c6a7681c88fb7fe4c7dad39220ff3a68d3dd8b63945ed5c09
+// 0440
+// a7714d2bea23f82cf6fe1e8a92d0f952493230cc5bc6412d1c8f49fb7b7f393b
+// 9c7260773ec6ecc7674799561566eb62daa7d99d674f0d0f68991ade7b4d664b

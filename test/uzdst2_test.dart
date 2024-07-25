@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:test/test.dart';
 import 'package:uzdst2/src/curve.dart';
 import 'package:uzdst2/src/digest/gost341194.dart';
@@ -23,6 +25,12 @@ void main() {
         rustLib.hashString(
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"),
         "73b70a39497de53a6e08c67b6d4db853540f03e9389299d9b0156ef7e85d0f61");
+
+    expect(
+        rustLib.hashByteArray(Uint8List.fromList(
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+                .codeUnits)),
+        "73b70a39497de53a6e08c67b6d4db853540f03e9389299d9b0156ef7e85d0f61");
     expect(rustLib.hashFile("asset/100mb.txt"),
         "6fa869c4d4545d9acb443d41f5b87584cd99d2928118cb355e7c139622f8c267");
   });
@@ -34,13 +42,14 @@ void main() {
 
   test('check', () {
     var keyPair = algo.generateKeyPair(curveA);
-    Signature s = algo.sign('Hello Ecdsa!', null, keyPair.privateKey, curveA);
-    expect(
-        algo.verify('Hello Ecdsa!', null, s, keyPair.publicKey, curveA), true);
+    Signature s =
+        algo.sign(keyPair.privateKey, curveA, message: 'Hello Ecdsa!');
+    expect(algo.verify(s, keyPair.publicKey, curveA, message: 'Hello Ecdsa!'),
+        true);
 
     keyPair = algo.generateKeyPair(curveC);
-    s = algo.sign('Hello Ecdsa!', null, keyPair.privateKey, curveC);
-    expect(
-        algo.verify('Hello Ecdsa!', null, s, keyPair.publicKey, curveC), true);
+    s = algo.sign(keyPair.privateKey, curveC, message: 'Hello Ecdsa!');
+    expect(algo.verify(s, keyPair.publicKey, curveC, message: 'Hello Ecdsa!'),
+        true);
   });
 }

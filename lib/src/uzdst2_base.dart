@@ -1,6 +1,7 @@
 library uzdst2;
 
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:uzdst2/src/curve.dart';
 import 'package:uzdst2/src/digest/gost341194.dart';
@@ -45,19 +46,26 @@ class Uzdst2 {
   /// where x_c is the x-coordinate of point C. If r=0, return to step 3;
   /// step 5. calculate the value s ≡ (rd+ke) (mod t). If s=0, return to step 3; (d is privateKey)
   Signature sign(
-      String? message, String? filePath, BigInt privateKey, Curve curve) {
+    BigInt privateKey,
+    Curve curve, {
+    String? message,
+    String? filePath,
+    Uint8List? byteArray,
+  }) {
     BigInt k;
     ECPoint R;
     BigInt r;
     BigInt s;
 
-    if (message == null && filePath == null) {
-      Exception('message and filePath are null');
+    if (message == null && filePath == null && byteArray == null) {
+      Exception('message, filePath and byteArray are null');
     }
     // step 1.
     String m = message != null
         ? rustLib.hashString(message)
-        : rustLib.hashFile(filePath!);
+        : filePath != null
+            ? rustLib.hashFile(filePath)
+            : rustLib.hashByteArray(byteArray!);
 
     //step 2.
     final z = BigInt.parse(
@@ -89,10 +97,16 @@ class Uzdst2 {
   /// step 4. v = e^(-1) (mod t)
   /// step 5. z1 = sv(mod t)  z2 = -rv (mod t)
   /// step 6. C = [z1]N“+”[z2]T, R = x_c (mod t)
-  bool verify(String? message, String? filePath, Signature signature,
-      ECPoint publicKey, Curve curve) {
-    if (message == null && filePath == null) {
-      Exception('message and filePath are null');
+  bool verify(
+    Signature signature,
+    ECPoint publicKey,
+    Curve curve, {
+    String? message,
+    String? filePath,
+    Uint8List? byteArray,
+  }) {
+    if (message == null && filePath == null && byteArray == null) {
+      Exception('message, filePath and byteArray are null');
     }
     // step 1.
     if (!(BigInt.zero < signature.r && signature.r < curve.n) ||
@@ -102,7 +116,9 @@ class Uzdst2 {
     // step 2.
     String m = message != null
         ? rustLib.hashString(message)
-        : rustLib.hashFile(filePath!);
+        : filePath != null
+            ? rustLib.hashFile(filePath)
+            : rustLib.hashByteArray(byteArray!);
     final z = BigInt.parse(
         m.codeUnits.map((i) => i.toRadixString(16).padLeft(2, '0')).join(),
         radix: 16);

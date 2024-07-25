@@ -14,6 +14,7 @@ dependencies:
   pointycastle: 
     git:
       url: https://github.com/ishifr/pc-dart
+      ref: 96146f3f573a3898e2c66ddb1254f6bc48bf92aa
 
 dev_dependencies:
   lints: 3.0.0
